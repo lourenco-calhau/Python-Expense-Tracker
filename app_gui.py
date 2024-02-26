@@ -1,4 +1,6 @@
 import customtkinter as tk
+from tkinter import messagebox
+from authentication import login, sign_up
 
 tk.set_appearance_mode('dark')
 tk.set_default_color_theme('dark-blue')
@@ -16,7 +18,7 @@ class SampleApp(tk.CTk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.pages = {}
-        for PageClass in (LoginPage, MainPage):
+        for PageClass in (LoginPage, MainPage, SignUpPage):
             page_name = PageClass.__name__
             page = PageClass(parent=self.container, controller=self)
             self.pages[page_name] = page
@@ -38,12 +40,12 @@ class LoginPage(tk.CTkFrame):
         label.pack(pady=40, padx=10)
 
         #Username entry
-        username = tk.CTkEntry(self, placeholder_text='Username', width=250)
-        username.pack(pady=12, padx=10)
+        self.username = tk.CTkEntry(self, placeholder_text='Username', width=250)
+        self.username.pack(pady=12, padx=10)
 
         #Password entry
-        password = tk.CTkEntry(self, placeholder_text='Password', show='*', width=250)
-        password.pack(pady=12, padx=10)
+        self.password = tk.CTkEntry(self, placeholder_text='Password', show='*', width=250)
+        self.password.pack(pady=12, padx=10)
 
         #Frame to keep login and signup buttons on the same line
         frame_buttons = tk.CTkFrame(self, fg_color='transparent')
@@ -54,12 +56,62 @@ class LoginPage(tk.CTkFrame):
         login_button.pack(padx=25,side='left')
 
         #Sign up button
-        signin_button=tk.CTkButton(master=frame_buttons, text='Sign Up', command=self.login, width=100)
+        signin_button=tk.CTkButton(master=frame_buttons, text='Sign Up', command=self.sign_up, width=100)
         signin_button.pack(padx=25,side='left')
 
     def login(self):
         # Logic to check login credentials
         # If login is successful, move to main page
+        username=self.username.get()
+        password=self.password.get()
+        login_success = login(username,password)
+        if login_success:
+            # Login successful, navigate to the main page
+            self.controller.show_page("MainPage")
+        else:
+            # Login unsuccessful, show error message
+            messagebox.showerror("Login Failed", "Wrong username or password")
+
+    def sign_up(self):
+        self.controller.show_page("SignUpPage")
+
+class SignUpPage(tk.CTkFrame):
+    def __init__(self, parent, controller):
+        tk.CTkFrame.__init__(self, parent)
+        self.controller = controller
+
+        #Page title
+        label = tk.CTkLabel(self, text="Create New Account",font=('Roboto', 24, 'bold'))
+        label.pack(pady=40, padx=10)
+
+        #Username entry
+        self.username = tk.CTkEntry(self, placeholder_text='Username', width=250)
+        self.username.pack(pady=12, padx=10)
+
+        #Password entry
+        self.password = tk.CTkEntry(self, placeholder_text='Password', show='*', width=250)
+        self.password.pack(pady=12, padx=10)
+
+        #Frame to keep back and create account buttons on the same line
+        frame_buttons = tk.CTkFrame(self, fg_color='transparent')
+        frame_buttons.pack(pady=12)
+
+        #Back button
+        back_button=tk.CTkButton(master=frame_buttons, text='Back', command=self.back, width=100)
+        back_button.pack(padx=25,side='left')
+
+        #Create account button
+        create_button=tk.CTkButton(master=frame_buttons, text='Create Account', command=self.create, width=100)
+        create_button.pack(padx=25,side='left')
+
+    def back(self):
+        self.controller.show_page("LoginPage")
+
+    def create(self):
+        username=str(self.username.get())
+        password=str(self.password.get())
+        sign_up(username,password)
+        messagebox.showinfo('Sign Up', 'Successfully created new account')
         self.controller.show_page("MainPage")
 
 class MainPage(tk.CTkFrame):
@@ -105,10 +157,16 @@ class MainPage(tk.CTkFrame):
         configure_button = tk.CTkButton(lower_row, text='configure',anchor='nw',font=('Roboto', 24, 'bold'), width=230, height=150, corner_radius=7)
         configure_button.pack(padx=40, pady=0, side='left')
 
+    #Logout function
     def logout(self):
         # Logic to logout
         # For simplicity, let's just go back to login page
-        self.controller.show_page("LoginPage")
+        result = messagebox.askyesno(title='Logout',message='Are you sure you want to logout?')
+        if result:
+            self.controller.show_page("LoginPage")
+        else:
+            pass
+        
 
 
 if __name__ == "__main__":

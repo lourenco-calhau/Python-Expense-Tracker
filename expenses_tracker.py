@@ -2,16 +2,16 @@ from expense import Expense
 
 def main():
     print("🎯 Running expenses tracker!\n")
-    file_path = r'C:\Users\loure\Desktop\Projetos\Python\Expense tracker\expenses.csv'
+    expenses_file_path = r'C:\Users\loure\Desktop\Projetos programação\Python\Expense tracker\expenses.csv'
 
     #Get user input
     expense = get_user_expense()
 
     #Save expense to file
-    save_expense_to_file(expense, file_path)
+    save_expense_to_file(expense, expenses_file_path)
 
     #Summarize expenses
-    summarize_expense(file_path) 
+    summarize_expense(expenses_file_path) 
 
 def get_user_expense():
     print("🎯 Getting user expense\n")
