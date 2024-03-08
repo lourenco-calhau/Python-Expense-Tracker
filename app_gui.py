@@ -1,11 +1,12 @@
 import customtkinter as tk
 from tkinter import messagebox
 from authentication import login, sign_up
+from expenses_tracker import add_expense, list_expenses
 
 tk.set_appearance_mode('dark')
 tk.set_default_color_theme('dark-blue')
 
-class SampleApp(tk.CTk):
+class App(tk.CTk):
     def __init__(self):
         tk.CTk.__init__(self)
         self.title("Expense Tracker")
@@ -17,8 +18,10 @@ class SampleApp(tk.CTk):
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
+        self.current_username = None # Attribute to store the current username
+
         self.pages = {}
-        for PageClass in (LoginPage, MainPage, SignUpPage):
+        for PageClass in (LoginPage, MainPage, SignUpPage, NewExpensePage, AllExpensesPage):
             page_name = PageClass.__name__
             page = PageClass(parent=self.container, controller=self)
             self.pages[page_name] = page
@@ -29,6 +32,9 @@ class SampleApp(tk.CTk):
     def show_page(self, page_name):
         page = self.pages[page_name]
         page.tkraise()
+
+        if hasattr(page, 'on_page_show'):
+            page.on_page_show()
 
 class LoginPage(tk.CTkFrame):
     def __init__(self, parent, controller):
@@ -66,6 +72,8 @@ class LoginPage(tk.CTkFrame):
         password=self.password.get()
         login_success = login(username,password)
         if login_success:
+            # Store the current username
+            self.controller.current_username = username
             # Login successful, navigate to the main page
             self.controller.show_page("MainPage")
         else:
@@ -110,9 +118,16 @@ class SignUpPage(tk.CTkFrame):
     def create(self):
         username=str(self.username.get())
         password=str(self.password.get())
-        sign_up(username,password)
-        messagebox.showinfo('Sign Up', 'Successfully created new account')
-        self.controller.show_page("MainPage")
+        sign_up_success = sign_up(username,password)
+        if sign_up_success:
+            # Store the current username
+            self.controller.current_username = username
+            # Sign up successfull, navigate to the main page
+            messagebox.showinfo('Sign Up', 'Successfully created new account')
+            self.controller.show_page("MainPage")
+        else:
+            # Sign up unsuccessfull, new username
+            messagebox.showerror("Sign Up Failed", "Already existing username")
 
 class MainPage(tk.CTkFrame):
     def __init__(self, parent, controller):
@@ -148,10 +163,10 @@ class MainPage(tk.CTkFrame):
         lower_row = tk.CTkFrame(self,fg_color='transparent')
         lower_row.pack(pady=20)
 
-        new_expense_button = tk.CTkButton(lower_row, text='new expense',anchor='nw',font=('Roboto', 24, 'bold'), width=230, height=150, corner_radius=7)
+        new_expense_button = tk.CTkButton(lower_row, text='new expense',anchor='nw',font=('Roboto', 24, 'bold'), width=230, height=150, corner_radius=7, command=self.add_new_expense_button)
         new_expense_button.pack(padx=40, pady=0, side='left')
 
-        all_expenses_button = tk.CTkButton(lower_row, text='expense list',anchor='nw',font=('Roboto', 24, 'bold'), width=230, height=150, corner_radius=7)
+        all_expenses_button = tk.CTkButton(lower_row, text='expense list',anchor='nw',font=('Roboto', 24, 'bold'), width=230, height=150, corner_radius=7, command=self.all_expenses_button)
         all_expenses_button.pack(padx=40, pady=0, side='left')
 
         configure_button = tk.CTkButton(lower_row, text='configure',anchor='nw',font=('Roboto', 24, 'bold'), width=230, height=150, corner_radius=7)
@@ -163,12 +178,98 @@ class MainPage(tk.CTkFrame):
         # For simplicity, let's just go back to login page
         result = messagebox.askyesno(title='Logout',message='Are you sure you want to logout?')
         if result:
+            # Update the current username
+            self.controller.current_username = None
             self.controller.show_page("LoginPage")
         else:
             pass
         
+    def add_new_expense_button(self):
+        self.controller.show_page("NewExpensePage")
 
+    def all_expenses_button(self):
+        self.controller.show_page("AllExpensesPage")
+
+class NewExpensePage(tk.CTkFrame):
+    def __init__(self, parent, controller):
+        tk.CTkFrame.__init__(self, parent)
+        self.controller = controller
+
+        #Header
+        header = tk.CTkFrame(self, height=50)
+        header.pack(anchor='n', fill='x')
+
+        page_title = tk.CTkLabel(header, text="Add new expense",font=('Roboto', 24, 'bold'))
+        page_title.pack(pady=40, padx=30, side='left')
+
+        #Back button
+        back_button = tk.CTkButton(header, text="Back", fg_color='transparent',bg_color='transparent', command=self.back, width=30)
+        back_button.pack(pady=40, padx=20, side='right')
+
+        #Expense description
+        self.description = tk.CTkEntry(self, placeholder_text='Description', width=250)
+        self.description.pack(pady=12, padx=10)
+
+        #Expense amount
+        self.amount = tk.CTkEntry(self, placeholder_text='Amount', width=250)
+        self.amount.pack(pady=12, padx=10)
+
+        #Category options
+        self.options = tk.CTkOptionMenu(self,values=['Food','Fun','Work','House'], width=250, fg_color='#343638', button_color='#343638', button_hover_color='#565B5E')
+        self.options.pack(pady=12,padx=10)
+
+        #Add expense button
+        add = tk.CTkButton(self, text='Add Expense', command=self.add_expense)
+        add.pack(pady=12,padx=10)
+
+    def back(self):
+        self.controller.show_page("MainPage")
+
+    def add_expense(self):
+        username = self.controller.current_username
+        description = str(self.description.get())
+        amount = float(self.amount.get())
+        category = str(self.options.get())
+
+        add_expense(username,amount,description,category)
+
+class AllExpensesPage(tk.CTkFrame):
+    def __init__(self, parent, controller):
+        tk.CTkFrame.__init__(self, parent)
+        self.controller = controller
+        
+        # Header
+        header = tk.CTkFrame(self, height=50)
+        header.pack(anchor='n', fill='x')
+
+        page_title = tk.CTkLabel(header, text="All expenses", font=('Roboto', 24, 'bold'))
+        page_title.pack(pady=40, padx=30, side='left')
+
+        # Back button
+        back_button = tk.CTkButton(header, text="Back", fg_color='transparent', bg_color='transparent',
+                                    command=self.back, width=30)
+        back_button.pack(pady=40, padx=20, side='right')
+
+        self.text = tk.CTkTextbox(self, width=300, height=450, font=('Roboto', 16))
+        self.text.pack(pady=30, padx=10, anchor='center')
+
+    def update_expenses_text(self):
+        # Clear the text widget
+        self.text.delete(1.0, tk.END)
+
+        # Get expenses text after updating username
+        expenses_text = list_expenses(self.controller.current_username)
+
+        # Insert the updated expenses text
+        self.text.insert(tk.END, expenses_text)
+
+    def back(self):
+        self.controller.show_page("MainPage")
+
+    def on_page_show(self):
+        # Call this method whenever this page is shown
+        self.update_expenses_text()
 
 if __name__ == "__main__":
-    app = SampleApp()
+    app = App()
     app.mainloop()
